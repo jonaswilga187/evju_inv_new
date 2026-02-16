@@ -120,11 +120,10 @@ Nutzer rufen die App **nur über diese URL** auf, nicht direkt über die Ports d
 Im Projektordner auf dem Ubuntu-Server:
 
 ```bash
-chmod +x deploy.sh update.sh   # nur beim ersten Mal nötig
-./update.sh
+bash update.sh
 ```
 
-(Alternativ: `./deploy.sh` – gleiche Funktion.)
+(Alternativ: `chmod +x update.sh` und `./update.sh`, oder `bash deploy.sh` – gleiche Funktion.)
 
 Das Skript macht:
 
