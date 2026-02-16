@@ -12,399 +12,186 @@ Ein modernes Inventarsystem mit MongoDB, React-Frontend und Node.js/Express-Back
 
 ## Technologie-Stack
 
-- **Frontend**: React 18, React Big Calendar, Axios
+- **Frontend**: React 18, React Big Calendar, Axios (per Nginx ausgeliefert)
 - **Backend**: Node.js, Express, MongoDB (Mongoose)
-- **Datenbank**: MongoDB (via Docker Compose)
-- **Authentifizierung**: JWT (JSON Web Tokens)
+- **Datenbank**: MongoDB (im Docker-Stack)
+- **Deployment**: Docker Compose, Zugriff über externen Nginx (Reverse-Proxy)
 
-## Voraussetzungen
+---
 
-- Node.js (v16 oder höher)
-- npm oder yarn
+## Deployment auf Ubuntu-Server
+
+Die App läuft vollständig in Docker. Der Zugriff erfolgt über einen **Nginx auf einer anderen VM**, der auf den Docker-Host (Port 3000 = Frontend, Port 5000 = Backend) weiterleitet.
+
+### Voraussetzungen auf dem Docker-Host
+
+- Ubuntu (oder vergleichbar)
 - Docker und Docker Compose
 - Git
 
-## Start mit Docker Compose (Homeserver)
-
-Wenn du die Anwendung auf einem Server (z. B. Homeserver) vollständig mit Docker betreiben willst – inkl. Frontend und Backend – reicht Folgendes. Der Zugriff erfolgt über deinen **bestehenden Nginx auf einer anderen VM**; die Docker-Container liefern nur die Dienste und exponieren Port 3000 (Frontend) und 5000 (Backend).
-
-### Auf dem Docker-Host (VM mit Docker Compose)
+### 1. Docker und Docker Compose installieren
 
 ```bash
-git clone <IHR-GITHUB-REPO> evju_inv
-cd evju_inv
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y curl git
 
-cp .env.example .env
-# .env anpassen: JWT_SECRET (unbedingt ändern!), MONGO_PASSWORD, FRONTEND_URL
-# FRONTEND_URL = exakt die URL, unter der dein Nginx die App ausliefert (z. B. https://inventory.deinedomain.de)
-
-docker-compose up -d
-```
-
-**Erster Admin-Benutzer anlegen:**
-
-```bash
-docker-compose exec backend node scripts/createAdmin.js
-```
-
-### Auf der Nginx-VM (Reverse-Proxy)
-
-Nginx läuft auf einer **anderen VM**. Dort eine Server-Block-Konfiguration für die App ergänzen (z. B. unter `sites-available`). `<DOCKER-HOST-IP>` = IP des Rechners, auf dem `docker-compose` läuft.
-
-```nginx
-# Beispiel: Server für inventory.deinedomain.de
-server {
-    listen 80;   # bzw. 443 mit ssl, wenn du SSL nutzt
-    server_name inventory.deinedomain.de;
-
-    location / {
-        proxy_pass http://<DOCKER-HOST-IP>:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    location /api {
-        proxy_pass http://<DOCKER-HOST-IP>:5000;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
-
-Anschließend Nginx neu laden (`sudo systemctl reload nginx` oder `sudo nginx -s reload`). Nutzer rufen die App **nur über die Nginx-URL** auf (nicht direkt über die Docker-Host-Ports).
-
-**Hinweis:** `FRONTEND_URL` in der `.env` des Projekts muss genau diese URL sein (z. B. `https://inventory.deinedomain.de`), wenn du HTTPS nutzt – wichtig für CORS und Cookies.
-
-**Updates (Docker):** Nach `git pull` auf dem Docker-Host: `docker-compose build --no-cache && docker-compose up -d`.
-
-## Installation auf Ubuntu Server
-
-### 1. System-Updates und Basis-Pakete
-
-```bash
-sudo apt update
-sudo apt upgrade -y
-sudo apt install -y curl git build-essential
-```
-
-### 2. Node.js installieren
-
-```bash
-# Node.js 18.x installieren
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt install -y nodejs
-
-# Installation überprüfen
-node --version
-npm --version
-```
-
-### 3. Docker installieren
-
-```bash
-# Docker installieren
+# Docker
 curl -fsSL https://get.docker.com -o get-docker.sh
 sudo sh get-docker.sh
-
-# Docker Compose installieren
-sudo apt install -y docker-compose
-
-# Docker ohne sudo ausführen (optional)
 sudo usermod -aG docker $USER
-# Nach diesem Befehl neu einloggen!
+# Danach ab- und wieder anmelden, damit die Gruppe gilt.
 
-# Installation überprüfen
-docker --version
-docker-compose --version
+# Docker Compose (Plugin)
+sudo apt install -y docker-compose-plugin
 ```
 
-### 4. Projekt klonen und einrichten
+Prüfen: `docker --version` und `docker compose version`.
+
+### 2. Projekt klonen und einrichten
 
 ```bash
-# Projekt in gewünschtes Verzeichnis klonen
-cd /opt  # oder ein anderes Verzeichnis Ihrer Wahl
-sudo git clone <IHR-REPOSITORY-URL> inventory-system
-cd inventory-system
-
-# Berechtigungen setzen
-sudo chown -R $USER:$USER .
+sudo git clone <IHR-GITHUB-REPO> /opt/evju_inv
+cd /opt/evju_inv
+sudo chown -R $USER:$USER /opt/evju_inv
 ```
 
-### 5. Backend einrichten
+### 3. Umgebung konfigurieren
 
 ```bash
-cd backend
-
-# Dependencies installieren
-npm install
-
-# Environment-Datei erstellen
 cp .env.example .env
-
-# .env Datei bearbeiten (wichtig: JWT_SECRET ändern!)
 nano .env
 ```
 
-**Wichtige .env Einstellungen:**
-```env
-MONGODB_URI=mongodb://admin:changeme@localhost:27017/inventory?authSource=admin
-JWT_SECRET=IHRE-SICHERE-ZUFÄLLIGE-ZEICHENKETTE-HIER
-PORT=5000
-FRONTEND_URL=http://localhost:3000
-```
+**Wichtige Einträge in `.env`:**
 
-### 6. Frontend einrichten
+| Variable         | Bedeutung |
+|------------------|-----------|
+| `JWT_SECRET`     | Geheimer Schlüssel für JWT (unbedingt stark und einzigartig setzen) |
+| `MONGO_PASSWORD` | MongoDB-Passwort (Standard in .env.example: changeme) |
+| `FRONTEND_URL`   | Exakt die URL, unter der Nutzer die App aufrufen (z. B. `https://inventory.deinedomain.de`). Wichtig für CORS/Cookies. |
 
-```bash
-cd ../frontend
-
-# Dependencies installieren
-npm install
-
-# Environment-Datei erstellen
-cp .env.example .env
-
-# .env Datei bearbeiten
-nano .env
-```
-
-**Frontend .env:**
-```env
-REACT_APP_API_URL=http://localhost:5000/api
-```
-
-### 7. MongoDB mit Docker Compose starten
+### 4. Erster Start
 
 ```bash
-cd ..
-
-# MongoDB Container starten
-docker-compose up -d
-
-# Status überprüfen
-docker-compose ps
-
-# Logs anzeigen (optional)
-docker-compose logs -f mongodb
+docker compose up -d
 ```
 
-### 8. Backend starten (Development)
+Ersten Admin-Benutzer anlegen:
 
 ```bash
-cd backend
-npm start
+docker compose exec backend node scripts/createAdmin.js
 ```
 
-### 9. Frontend starten (Development)
+### 5. Reverse-Proxy in Nginx Proxy Manager
+
+Die App wird über **Nginx Proxy Manager** (Dashboard) angebunden.  
+`<DOCKER-HOST-IP>` = IP des Rechners, auf dem Docker Compose läuft (z. B. `192.168.1.10`).
+
+**Im Nginx Proxy Manager:**
+
+1. **Hosts → Proxy Hosts → Add Proxy Host**
+   - **Domain Names:** deine Subdomain (z. B. `inventory.deinedomain.de`)
+   - **Scheme:** `http`
+   - **Forward Hostname / IP:** `<DOCKER-HOST-IP>`
+   - **Forward Port:** `3000` (Frontend)
+   - **Cache Assets:** optional an
+   - **Block Common Exploits:** optional an  
+   Speichern (Save). SSL später unter „SSL“ tab einrichten.
+
+2. **Custom Location für die API** (damit `/api` zum Backend geht):
+   - Beim gleichen Proxy Host auf **„Custom locations“** (oder **Edit** → Tab **Custom locations**) → **Add location**
+   - **Define location:** `/api`
+   - **Scheme:** `http`
+   - **Forward Hostname / IP:** `<DOCKER-HOST-IP>`
+   - **Forward Port:** `5000`
+   - **Advanced** (falls vorhanden): leer lassen oder nur Proxy-Header wie unten, NPM setzt sie oft schon.  
+   Speichern.
+
+3. **SSL** (empfohlen): Beim Proxy Host im Tab **SSL** „Request a new SSL Certificate“ wählen (Let’s Encrypt), Domain eintragen, speichern.
+
+**Wichtig:** `FRONTEND_URL` in der `.env` des Projekts muss genau die URL sein, unter der Nutzer die App aufrufen (z. B. `https://inventory.deinedomain.de`) – sonst CORS/Login-Probleme.
+
+Nutzer rufen die App **nur über diese URL** auf, nicht direkt über die Ports des Docker-Hosts.
+
+---
+
+## Updates (neue Version laden)
+
+Im Projektordner auf dem Ubuntu-Server:
 
 ```bash
-# In einem neuen Terminal
-cd frontend
-npm start
+chmod +x deploy.sh   # nur beim ersten Mal nötig
+./deploy.sh
 ```
 
-Die Anwendung sollte jetzt unter `http://localhost:3000` erreichbar sein.
+Das Skript `deploy.sh` macht:
 
-## Production Deployment
+1. `git pull`
+2. Docker-Container neu bauen (`docker compose build --no-cache`)
+3. Container neu starten (`docker compose up -d`)
 
-### Backend mit PM2
+Falls `docker compose` nicht verfügbar ist (ältere Setup), nutzt das Skript automatisch `docker-compose`.
 
-```bash
-# PM2 global installieren
-sudo npm install -g pm2
-
-# Backend mit PM2 starten
-cd backend
-pm2 start server.js --name inventory-backend
-
-# PM2 beim Systemstart aktivieren
-pm2 startup
-pm2 save
-
-# Status überprüfen
-pm2 status
-
-# Logs anzeigen
-pm2 logs inventory-backend
-```
-
-### Frontend Build
-
-```bash
-cd frontend
-
-# Production Build erstellen
-npm run build
-
-# Build-Verzeichnis wird in frontend/build/ erstellt
-```
-
-### Nginx Konfiguration (Optional)
-
-```bash
-# Nginx installieren
-sudo apt install -y nginx
-
-# Konfigurationsdatei erstellen
-sudo nano /etc/nginx/sites-available/inventory
-```
-
-**Nginx Konfiguration:**
-```nginx
-server {
-    listen 80;
-    server_name your-domain.com;  # Ihre Domain oder IP
-
-    # Frontend
-    location / {
-        root /opt/inventory-system/frontend/build;
-        try_files $uri $uri/ /index.html;
-    }
-
-    # Backend API
-    location /api {
-        proxy_pass http://localhost:5000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
-
-```bash
-# Symbolischen Link erstellen
-sudo ln -s /etc/nginx/sites-available/inventory /etc/nginx/sites-enabled/
-
-# Nginx Konfiguration testen
-sudo nginx -t
-
-# Nginx starten/neu laden
-sudo systemctl restart nginx
-sudo systemctl enable nginx
-```
-
-### SSL/HTTPS mit Let's Encrypt (Optional)
-
-```bash
-# Certbot installieren
-sudo apt install -y certbot python3-certbot-nginx
-
-# SSL-Zertifikat erstellen
-sudo certbot --nginx -d your-domain.com
-
-# Automatische Erneuerung testen
-sudo certbot renew --dry-run
-```
+---
 
 ## Wartung
 
-### MongoDB Backup
+### Logs
 
 ```bash
-# Backup erstellen
-docker exec inventory-mongodb mongodump --out /data/backup --username admin --password changeme --authenticationDatabase admin
-
-# Backup wiederherstellen
-docker exec inventory-mongodb mongorestore /data/backup --username admin --password changeme --authenticationDatabase admin
+docker compose logs -f          # alle Dienste
+docker compose logs -f backend  # nur Backend
+docker compose logs -f mongodb  # nur MongoDB
 ```
 
-### Logs anzeigen
+### MongoDB-Backup
 
 ```bash
-# Backend Logs (PM2)
-pm2 logs inventory-backend
+# Backup (Passwort ggf. anpassen)
+docker compose exec mongodb mongodump --out /data/backup --username admin --password changeme --authenticationDatabase admin
 
-# MongoDB Logs
-docker-compose logs mongodb
-
-# Nginx Logs
-sudo tail -f /var/log/nginx/access.log
-sudo tail -f /var/log/nginx/error.log
+# Wiederherstellen
+docker compose exec mongodb mongorestore /data/backup --username admin --password changeme --authenticationDatabase admin
 ```
 
-### Updates
+### Container-Status
 
 ```bash
-# Code aktualisieren
-git pull
-
-# Backend Dependencies aktualisieren
-cd backend
-npm install
-
-# Frontend Dependencies aktualisieren
-cd ../frontend
-npm install
-npm run build
-
-# Backend neu starten
-pm2 restart inventory-backend
-
-# Nginx neu laden
-sudo systemctl reload nginx
+docker compose ps
 ```
+
+---
 
 ## Sicherheitshinweise
 
-1. **JWT_SECRET ändern**: Verwenden Sie einen starken, zufälligen Secret-Key in Production
-2. **MongoDB Passwort ändern**: Ändern Sie das Standard-Passwort in docker-compose.yml
-3. **Firewall konfigurieren**: Nur notwendige Ports öffnen (80, 443, 22)
-4. **Regelmäßige Backups**: Erstellen Sie regelmäßig Backups der MongoDB-Datenbank
-5. **HTTPS verwenden**: In Production immer HTTPS verwenden
+1. **JWT_SECRET** in `.env` stark und einzigartig setzen.
+2. **MONGO_PASSWORD** von „changeme“ ändern (in `.env` und ggf. auf der Nginx-VM nicht nötig).
+3. **FRONTEND_URL** exakt auf die öffentliche URL setzen (inkl. https), unter der die App erreichbar ist.
+4. Firewall: Nur nötige Ports öffnen (z. B. 22, 3000, 5000 nur für Nginx-VM erreichbar).
+5. In Production HTTPS über den Nginx verwenden (z. B. Let’s Encrypt).
+
+---
 
 ## Fehlerbehebung
 
-### MongoDB verbindet nicht
+**Container starten nicht / Fehler beim Build**
 
-```bash
-# Container Status prüfen
-docker-compose ps
+- Logs prüfen: `docker compose logs`
+- `.env` prüfen (vorhanden, JWT_SECRET und FRONTEND_URL gesetzt).
+- Ports 3000 und 5000 frei? `sudo ss -tlnp | grep -E '3000|5000'`
 
-# Container neu starten
-docker-compose restart mongodb
+**MongoDB verbindet nicht**
 
-# Logs prüfen
-docker-compose logs mongodb
-```
+- `docker compose ps` – läuft `inventory-mongodb`?
+- `docker compose restart mongodb` und kurz warten, dann `docker compose up -d` erneut.
 
-### Backend startet nicht
+**App im Browser erreichbar, aber API-Fehler**
 
-```bash
-# Port bereits belegt?
-sudo lsof -i :5000
+- `FRONTEND_URL` in `.env` muss genau die URL sein, die der Browser nutzt (inkl. https).
+- Nginx-Config: `/api` muss auf `<DOCKER-HOST-IP>:5000` zeigen.
 
-# Node Modules neu installieren
-cd backend
-rm -rf node_modules
-npm install
-```
-
-### Frontend Build Fehler
-
-```bash
-# Cache löschen
-cd frontend
-rm -rf node_modules build
-npm install
-npm run build
-```
-
-## Support
-
-Bei Problemen oder Fragen erstellen Sie bitte ein Issue im Repository.
+---
 
 ## Lizenz
 
 ISC
-
