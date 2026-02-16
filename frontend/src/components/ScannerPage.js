@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { scannerAPI } from '../services/api';
 import { setScanSessionId } from '../utils/scanSession';
@@ -87,6 +87,7 @@ const ScannerPage = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 py-8 px-4">
       <div className="max-w-2xl mx-auto">
         <div className="bg-white rounded-2xl shadow-xl p-8">
+          <Link to="/" className="inline-block text-indigo-600 hover:text-indigo-800 mb-4 font-medium">← Zurück zum Inventar</Link>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Scanner</h1>
           <p className="text-gray-600 mb-6">
             Mit dem Handy diesen QR-Code scannen, dann Item-QR-Codes scannen. Die Liste unten aktualisiert sich automatisch.
