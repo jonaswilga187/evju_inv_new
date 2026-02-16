@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
 import InventoryTab from './InventoryTab';
 import CalendarTab from './CalendarTab';
 import BuchungenTab from './BuchungenTab';
@@ -13,16 +12,8 @@ function MainLayout({ user, onLogout }) {
       <header className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold">
-              <Link to="/" className="text-white hover:text-white/90">Inventarsystem</Link>
-            </h1>
+            <h1 className="text-2xl font-bold">Inventarsystem</h1>
             <div className="flex items-center gap-4">
-              <Link
-                to="/scanner"
-                className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-colors border border-white/30"
-              >
-                Scanner
-              </Link>
               <span className="text-sm text-white/90">Willkommen, {user.username}</span>
               <button
                 onClick={onLogout}
