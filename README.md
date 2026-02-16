@@ -120,11 +120,13 @@ Nutzer rufen die App **nur über diese URL** auf, nicht direkt über die Ports d
 Im Projektordner auf dem Ubuntu-Server:
 
 ```bash
-chmod +x deploy.sh   # nur beim ersten Mal nötig
-./deploy.sh
+chmod +x deploy.sh update.sh   # nur beim ersten Mal nötig
+./update.sh
 ```
 
-Das Skript `deploy.sh` macht:
+(Alternativ: `./deploy.sh` – gleiche Funktion.)
+
+Das Skript macht:
 
 1. `git pull`
 2. Docker-Container neu bauen (`docker compose build --no-cache`)
@@ -180,10 +182,17 @@ docker compose ps
 - `.env` prüfen (vorhanden, JWT_SECRET und FRONTEND_URL gesetzt).
 - Ports 3000 und 5000 frei? `sudo ss -tlnp | grep -E '3000|5000'`
 
-**MongoDB verbindet nicht**
+**MongoDB verbindet nicht / „Restarting (132)“**
 
-- `docker compose ps` – läuft `inventory-mongodb`?
-- `docker compose restart mongodb` und kurz warten, dann `docker compose up -d` erneut.
+- Exit 132 tritt oft auf älteren oder ARM-Servern auf. Im Projekt wird **MongoDB 5.0** verwendet (gute Kompatibilität).
+- Logs prüfen: `docker logs inventory-mongodb 2>&1 | tail -50`
+- Altes Volume entfernen und neu starten:
+  ```bash
+  docker compose down
+  docker volume rm inventory-system_mongodb_data inventory-system_mongodb_config 2>/dev/null || true
+  docker compose up -d
+  ```
+- Wenn es weiterhin scheitert: CPU/Architektur prüfen (`uname -m`). Bei ARM: offizielle MongoDB-Images haben eingeschränkte ARM-Unterstützung.
 
 **App im Browser erreichbar, aber API-Fehler**
 
