@@ -184,7 +184,8 @@ docker compose ps
 
 **MongoDB verbindet nicht / „Restarting (132)“**
 
-- Exit 132 tritt oft auf älteren oder ARM-Servern auf. Im Projekt wird **MongoDB 5.0** verwendet (gute Kompatibilität).
+- Exit 132 tritt oft in **Proxmox-VMs** auf, wenn die VM-CPU zu stark eingeschränkt ist.
+- **Lösung in Proxmox:** VM herunterfahren → **Hardware** → **Prozessor** doppelklicken → **Typ** von z. B. „kvm64“ auf **„host“** (oder „max“) stellen → Speichern, VM starten. Dann hat die VM die gleichen CPU-Features wie der Host; MongoDB 7 läuft in der Regel.
 - Logs prüfen: `docker logs inventory-mongodb 2>&1 | tail -50`
 - Altes Volume entfernen und neu starten:
   ```bash
@@ -192,7 +193,7 @@ docker compose ps
   docker volume rm inventory-system_mongodb_data inventory-system_mongodb_config 2>/dev/null || true
   docker compose up -d
   ```
-- Wenn es weiterhin scheitert: CPU/Architektur prüfen (`uname -m`). Bei ARM: offizielle MongoDB-Images haben eingeschränkte ARM-Unterstützung.
+- Wenn es auf echter Hardware (nicht Proxmox) weiterhin scheitert: **MongoDB 5.0** testen (in `docker-compose.yml` `mongo:7.0` durch `mongo:5.0` ersetzen).
 
 **App im Browser erreichbar, aber API-Fehler**
 
