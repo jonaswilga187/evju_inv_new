@@ -242,7 +242,8 @@ const BookingForm = ({ booking, customers, items, selectedDate, onClose, onSubmi
                   type="button"
                   onClick={() => {
                     const q = booking?._id ? `?booking=${booking._id}` : '';
-                    window.open(`${window.location.pathname.replace(/\/$/, '') || '/'}/scanner${q}`, '_blank');
+                    const url = `${window.location.origin}/scanner${q}`;
+                    window.open(url, '_blank');
                   }}
                   className="px-3 py-1 bg-amber-600 text-white text-sm rounded-lg hover:bg-amber-700 transition-colors font-semibold flex items-center gap-1"
                   title="Scanner öffnen: QR auf dem Handy scannen, dann Item-QR-Codes scannen"
