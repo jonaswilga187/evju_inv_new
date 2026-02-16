@@ -23,21 +23,17 @@ git pull
 
 echo ""
 echo "2. Docker-Container neu bauen und starten..."
-if command -v docker-compose &> /dev/null; then
-    docker-compose build --no-cache
-    docker-compose up -d
+if docker compose version &> /dev/null; then
+    DOCKER_CMD="docker compose"
 else
-    docker compose build --no-cache
-    docker compose up -d
+    DOCKER_CMD="docker-compose"
 fi
+$DOCKER_CMD build --no-cache
+$DOCKER_CMD up -d
 
 echo ""
 echo "3. Status:"
-if command -v docker-compose &> /dev/null; then
-    docker-compose ps
-else
-    docker compose ps
-fi
+$DOCKER_CMD ps
 
 echo ""
 echo "=== Deployment abgeschlossen. ==="

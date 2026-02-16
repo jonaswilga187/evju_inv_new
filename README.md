@@ -177,9 +177,14 @@ docker compose ps
 
 **Container starten nicht / Fehler beim Build**
 
-- Logs prüfen: `docker compose logs`
+- Logs prüfen: `docker compose logs` (bzw. `docker-compose logs`)
 - `.env` prüfen (vorhanden, JWT_SECRET und FRONTEND_URL gesetzt).
 - Ports 3000 und 5000 frei? `sudo ss -tlnp | grep -E '3000|5000'`
+
+**„ContainerConfig“ / KeyError beim `up -d` (älteres docker-compose v1)**
+
+- Alte Python-`docker-compose` (z. B. 1.29) hat einen Bug mit neueren Images. Kurzfristig: `docker-compose down`, dann `docker-compose up -d`.
+- Besser: **Docker Compose Plugin (v2)** nutzen: `sudo apt install docker-compose-plugin`, danach `docker compose` (mit Leerzeichen). Das Deploy-Skript verwendet automatisch das Plugin, falls vorhanden.
 
 **MongoDB verbindet nicht / „Restarting (132)“**
 
